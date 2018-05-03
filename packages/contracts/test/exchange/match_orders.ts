@@ -34,7 +34,7 @@ chaiSetup.configure();
 const expect = chai.expect;
 const blockchainLifecycle = new BlockchainLifecycle(web3Wrapper);
 
-describe.only('MatchOrders', () => {
+describe.only('matchOrdersAndVerifyBalancesAsync', () => {
     let makerAddressLeft: string;
     let makerAddressRight: string;
     let owner: string;
@@ -161,7 +161,7 @@ describe.only('MatchOrders', () => {
                 feeRecipientAddress: feeRecipientAddressRight,
             });
 
-            await matchOrderTester.matchOrders(
+            await matchOrderTester.matchOrdersAndVerifyBalancesAsync(
                 signedOrderLeft,
                 signedOrderRight,
                 defaultMakerAssetAddress,
@@ -191,7 +191,7 @@ describe.only('MatchOrders', () => {
                 feeRecipientAddress: feeRecipientAddressRight,
             });
 
-            await matchOrderTester.matchOrders(
+            await matchOrderTester.matchOrdersAndVerifyBalancesAsync(
                 signedOrderLeft,
                 signedOrderRight,
                 defaultMakerAssetAddress,
@@ -221,7 +221,7 @@ describe.only('MatchOrders', () => {
                 feeRecipientAddress: feeRecipientAddressRight,
             });
 
-            await matchOrderTester.matchOrders(
+            await matchOrderTester.matchOrdersAndVerifyBalancesAsync(
                 signedOrderLeft,
                 signedOrderRight,
                 defaultMakerAssetAddress,
@@ -251,7 +251,7 @@ describe.only('MatchOrders', () => {
                 feeRecipientAddress: feeRecipientAddressRight,
             });
 
-            const newERC20BalancesByOwner = await matchOrderTester.matchOrders(
+            const newERC20BalancesByOwner = await matchOrderTester.matchOrdersAndVerifyBalancesAsync(
                 signedOrderLeft,
                 signedOrderRight,
                 defaultMakerAssetAddress,
@@ -272,7 +272,7 @@ describe.only('MatchOrders', () => {
 
             const leftTakerAssetFilledAmount = signedOrderRight.makerAssetAmount;
             const rightTakerAssetFilledAmount = new BigNumber(0);
-            await matchOrderTester.matchOrders(
+            await matchOrderTester.matchOrdersAndVerifyBalancesAsync(
                 signedOrderLeft,
                 signedOrderRight2,
                 defaultMakerAssetAddress,
@@ -304,7 +304,7 @@ describe.only('MatchOrders', () => {
                 feeRecipientAddress: feeRecipientAddressRight,
             });
 
-            const newERC20BalancesByOwner = await matchOrderTester.matchOrders(
+            const newERC20BalancesByOwner = await matchOrderTester.matchOrdersAndVerifyBalancesAsync(
                 signedOrderLeft,
                 signedOrderRight,
                 defaultMakerAssetAddress,
@@ -328,7 +328,7 @@ describe.only('MatchOrders', () => {
                 erc20Balances[takerAddress][defaultMakerAssetAddress],
             );
             const rightTakerAssetFilledAmount = signedOrderLeft.makerAssetAmount.minus(takerAmountReceived);
-            await matchOrderTester.matchOrders(
+            await matchOrderTester.matchOrdersAndVerifyBalancesAsync(
                 signedOrderLeft2,
                 signedOrderRight,
                 defaultMakerAssetAddress,
@@ -361,7 +361,7 @@ describe.only('MatchOrders', () => {
                 feeRecipientAddress,
             });
 
-            await matchOrderTester.matchOrders(
+            await matchOrderTester.matchOrdersAndVerifyBalancesAsync(
                 signedOrderLeft,
                 signedOrderRight,
                 defaultMakerAssetAddress,
@@ -392,7 +392,7 @@ describe.only('MatchOrders', () => {
             });
 
             takerAddress = signedOrderLeft.makerAddress;
-            await matchOrderTester.matchOrders(
+            await matchOrderTester.matchOrdersAndVerifyBalancesAsync(
                 signedOrderLeft,
                 signedOrderRight,
                 defaultMakerAssetAddress,
@@ -436,7 +436,7 @@ describe.only('MatchOrders', () => {
             });
 
             return expect(
-                matchOrderTester.matchOrders(
+                matchOrderTester.matchOrdersAndVerifyBalancesAsync(
                     signedOrderLeft,
                     signedOrderRight,
                     defaultMakerAssetAddress,
