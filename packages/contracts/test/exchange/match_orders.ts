@@ -526,6 +526,56 @@ describe.only('matchOrdersAndVerifyBalancesAsync', () => {
             );
         });
 
+        it('Should not transfer any amounts if left order is not fillable', async () => {
+            const signedOrderLeft = orderFactoryLeft.newSignedOrder({
+                makerAddress: makerAddressLeft,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                makerAssetAmount: new BigNumber(5),
+                takerAssetAmount: new BigNumber(10),
+                feeRecipientAddress: feeRecipientAddressLeft,
+            });
+
+            const signedOrderRight = orderFactoryRight.newSignedOrder({
+                makerAddress: makerAddressRight,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                makerAssetAmount: new BigNumber(10),
+                takerAssetAmount: new BigNumber(2),
+                feeRecipientAddress: feeRecipientAddressRight,
+            });
+
+            await exchangeWrapper.cancelOrderAsync(signedOrderLeft, signedOrderLeft.makerAddress);
+            await exchangeWrapper.matchOrdersAsync(signedOrderLeft, signedOrderRight, takerAddress);
+            const newBalances = await erc20Wrapper.getBalancesAsync();
+            expect(newBalances).to.be.deep.equal(erc20Balances);
+        });
+
+        it('Should not transfer any amounts if right order is not fillable', async () => {
+            const signedOrderLeft = orderFactoryLeft.newSignedOrder({
+                makerAddress: makerAddressLeft,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                makerAssetAmount: new BigNumber(5),
+                takerAssetAmount: new BigNumber(10),
+                feeRecipientAddress: feeRecipientAddressLeft,
+            });
+
+            const signedOrderRight = orderFactoryRight.newSignedOrder({
+                makerAddress: makerAddressRight,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                makerAssetAmount: new BigNumber(10),
+                takerAssetAmount: new BigNumber(2),
+                feeRecipientAddress: feeRecipientAddressRight,
+            });
+
+            await exchangeWrapper.cancelOrderAsync(signedOrderRight, signedOrderRight.makerAddress);
+            await exchangeWrapper.matchOrdersAsync(signedOrderLeft, signedOrderRight, takerAddress);
+            const newBalances = await erc20Wrapper.getBalancesAsync();
+            expect(newBalances).to.be.deep.equal(erc20Balances);
+        });
+
         it('should throw if there is not a positive spread', async () => {
             const signedOrderLeft = orderFactoryLeft.newSignedOrder({
                 makerAddress: makerAddressLeft,
@@ -558,12 +608,68 @@ describe.only('matchOrdersAndVerifyBalancesAsync', () => {
             ).to.be.rejectedWith(constants.REVERT);
         });
 
-        /*
-            Should throw if left order is cancelled
-            Should throw if right order is cancelled
+        it('should throw if the left maker asset is not equal to the right taker asset ', async () => {
+            const signedOrderLeft = orderFactoryLeft.newSignedOrder({
+                makerAddress: makerAddressLeft,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                makerAssetAmount: new BigNumber(5),
+                takerAssetAmount: new BigNumber(10),
+                feeRecipientAddress: feeRecipientAddressLeft,
+            });
 
-            Should throw if left order maker token is not the same as right maker token.
+            const signedOrderRight = orderFactoryRight.newSignedOrder({
+                makerAddress: makerAddressRight,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                makerAssetAmount: new BigNumber(10),
+                takerAssetAmount: new BigNumber(2),
+                feeRecipientAddress: feeRecipientAddressRight,
+            });
 
-        */
+            return expect(
+                matchOrderTester.matchOrdersAndVerifyBalancesAsync(
+                    signedOrderLeft,
+                    signedOrderRight,
+                    defaultMakerAssetAddress,
+                    defaultTakerAssetAddress,
+                    zrxToken.address,
+                    takerAddress,
+                    erc20Balances,
+                ),
+            ).to.be.rejectedWith(constants.REVERT);
+        });
+
+        it('should throw if the right maker asset is not equal to the left taker asset ', async () => {
+            const signedOrderLeft = orderFactoryLeft.newSignedOrder({
+                makerAddress: makerAddressLeft,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                makerAssetAmount: new BigNumber(5),
+                takerAssetAmount: new BigNumber(10),
+                feeRecipientAddress: feeRecipientAddressLeft,
+            });
+
+            const signedOrderRight = orderFactoryRight.newSignedOrder({
+                makerAddress: makerAddressRight,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                makerAssetAmount: new BigNumber(10),
+                takerAssetAmount: new BigNumber(2),
+                feeRecipientAddress: feeRecipientAddressRight,
+            });
+
+            return expect(
+                matchOrderTester.matchOrdersAndVerifyBalancesAsync(
+                    signedOrderLeft,
+                    signedOrderRight,
+                    defaultMakerAssetAddress,
+                    defaultTakerAssetAddress,
+                    zrxToken.address,
+                    takerAddress,
+                    erc20Balances,
+                ),
+            ).to.be.rejectedWith(constants.REVERT);
+        });
     });
 }); // tslint:disable-line:max-file-line-count
