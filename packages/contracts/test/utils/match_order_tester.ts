@@ -184,17 +184,27 @@ export class MatchOrderTester {
         );
 
         console.log('******************** Verifying Fee Receipited Fees *******************');
-        // Verify Fees - Left Fee Recipient
-        const feesReceivedLeft = leftMakerFeePaid.add(takerFeePaidLeft);
-        expect(newBalances[feeRecipientAddressLeft][feeTokenAddress]).to.be.bignumber.equal(
-            erc20BalancesByOwner[feeRecipientAddressLeft][feeTokenAddress].add(feesReceivedLeft),
-        );
 
-        // Verify Fees - Right Fee Receipient
+        const feesReceivedLeft = leftMakerFeePaid.add(takerFeePaidLeft);
         const feesReceivedRight = rightMakerFeePaid.add(takerFeePaidRight);
-        expect(newBalances[feeRecipientAddressRight][feeTokenAddress]).to.be.bignumber.equal(
-            erc20BalancesByOwner[feeRecipientAddressRight][feeTokenAddress].add(feesReceivedRight),
-        );
+        if (feeRecipientAddressLeft === feeRecipientAddressRight) {
+            // Verify Fees
+            const feeRecipientAddress = feeRecipientAddressLeft;
+            const feesReceived = feesReceivedLeft.add(feesReceivedRight);
+            expect(newBalances[feeRecipientAddress][feeTokenAddress]).to.be.bignumber.equal(
+                erc20BalancesByOwner[feeRecipientAddress][feeTokenAddress].add(feesReceived),
+            );
+        } else {
+            // Verify Fees - Left Fee Recipient
+            expect(newBalances[feeRecipientAddressLeft][feeTokenAddress]).to.be.bignumber.equal(
+                erc20BalancesByOwner[feeRecipientAddressLeft][feeTokenAddress].add(feesReceivedLeft),
+            );
+
+            // Verify Fees - Right Fee Receipient
+            expect(newBalances[feeRecipientAddressRight][feeTokenAddress]).to.be.bignumber.equal(
+                erc20BalancesByOwner[feeRecipientAddressRight][feeTokenAddress].add(feesReceivedRight),
+            );
+        }
 
         return newBalances;
     }

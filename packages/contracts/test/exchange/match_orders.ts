@@ -341,6 +341,50 @@ describe.only('MatchOrders', () => {
             );
         });
 
+        it.only('should transfer the correct amounts if fee recipient is the same across both matched orders', async () => {
+            const feeRecipientAddress = feeRecipientAddressLeft;
+            const signedOrderLeft = orderFactoryLeft.newSignedOrder({
+                makerAddress: makerAddressLeft,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                makerAssetAmount: new BigNumber(5),
+                takerAssetAmount: new BigNumber(10),
+                feeRecipientAddress,
+            });
+
+            const signedOrderRight = orderFactoryRight.newSignedOrder({
+                makerAddress: makerAddressRight,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                makerAssetAmount: new BigNumber(10),
+                takerAssetAmount: new BigNumber(2),
+                feeRecipientAddress,
+            });
+
+            await matchOrderTester.matchOrders(
+                signedOrderLeft,
+                signedOrderRight,
+                defaultMakerAssetAddress,
+                defaultTakerAssetAddress,
+                zrxToken.address,
+                takerAddress,
+                erc20Balances,
+            );
+        });
+
+        /*
+        it.only('should transfer the correct amounts if taker is also the left order maker', async () => {
+
+        it.only('should transfer the correct amounts if taker is also the right order maker', async () => {
+
+        it.only('should transfer the correct amounts if taker is also the fee recipient', async () => {
+
+        it.only('should transfer the correct amounts if left maker is also the fee recipient', async () => {
+
+        it.only('should transfer the correct amounts if right maker is also the fee recipient', async () => {
+
+*/
+
         it.only('should throw if there is not a positive spread', async () => {
             const signedOrderLeft = orderFactoryLeft.newSignedOrder({
                 makerAddress: makerAddressLeft,
@@ -372,5 +416,13 @@ describe.only('MatchOrders', () => {
                 ),
             ).to.be.rejectedWith(constants.REVERT);
         });
+
+        /*
+            Should throw if left order is cancelled
+            Should throw if right order is cancelled
+
+            Should throw if left order maker token is not the same as right maker token.
+
+        */
     });
 }); // tslint:disable-line:max-file-line-count
