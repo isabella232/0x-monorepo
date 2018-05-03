@@ -341,7 +341,7 @@ describe.only('MatchOrders', () => {
             );
         });
 
-        it.only('should transfer the correct amounts if fee recipient is the same across both matched orders', async () => {
+        it('should transfer the correct amounts if fee recipient is the same across both matched orders', async () => {
             const feeRecipientAddress = feeRecipientAddressLeft;
             const signedOrderLeft = orderFactoryLeft.newSignedOrder({
                 makerAddress: makerAddressLeft,
@@ -371,9 +371,40 @@ describe.only('MatchOrders', () => {
                 erc20Balances,
             );
         });
-
         /*
         it.only('should transfer the correct amounts if taker is also the left order maker', async () => {
+            const signedOrderLeft = orderFactoryLeft.newSignedOrder({
+                makerAddress: makerAddressLeft,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                makerAssetAmount: new BigNumber(5),
+                takerAssetAmount: new BigNumber(10),
+                feeRecipientAddress: feeRecipientAddressLeft,
+            });
+
+            const signedOrderRight = orderFactoryRight.newSignedOrder({
+                makerAddress: makerAddressRight,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                makerAssetAmount: new BigNumber(10),
+                takerAssetAmount: new BigNumber(2),
+                feeRecipientAddress: feeRecipientAddressRight,
+            });
+
+            takerAddress = signedOrderLeft.makerAddress;
+            await matchOrderTester.matchOrders(
+                signedOrderLeft,
+                signedOrderRight,
+                defaultMakerAssetAddress,
+                defaultTakerAssetAddress,
+                zrxToken.address,
+                takerAddress,
+                erc20Balances,
+            );
+        }); */
+
+        /*
+        it.only('', async () => {
 
         it.only('should transfer the correct amounts if taker is also the right order maker', async () => {
 
@@ -385,7 +416,7 @@ describe.only('MatchOrders', () => {
 
 */
 
-        it.only('should throw if there is not a positive spread', async () => {
+        it('should throw if there is not a positive spread', async () => {
             const signedOrderLeft = orderFactoryLeft.newSignedOrder({
                 makerAddress: makerAddressLeft,
                 makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
