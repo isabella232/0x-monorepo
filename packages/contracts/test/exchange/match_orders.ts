@@ -340,5 +340,37 @@ describe.only('MatchOrders', () => {
                 rightTakerAssetFilledAmount,
             );
         });
+
+        it.only('should throw if there is not a positive spread', async () => {
+            const signedOrderLeft = orderFactoryLeft.newSignedOrder({
+                makerAddress: makerAddressLeft,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                makerAssetAmount: new BigNumber(5),
+                takerAssetAmount: new BigNumber(100),
+                feeRecipientAddress: feeRecipientAddressLeft,
+            });
+
+            const signedOrderRight = orderFactoryRight.newSignedOrder({
+                makerAddress: makerAddressRight,
+                makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultTakerAssetAddress),
+                takerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),
+                makerAssetAmount: new BigNumber(1),
+                takerAssetAmount: new BigNumber(200),
+                feeRecipientAddress: feeRecipientAddressRight,
+            });
+
+            return expect(
+                matchOrderTester.matchOrders(
+                    signedOrderLeft,
+                    signedOrderRight,
+                    defaultMakerAssetAddress,
+                    defaultTakerAssetAddress,
+                    zrxToken.address,
+                    takerAddress,
+                    erc20Balances,
+                ),
+            ).to.be.rejectedWith(constants.REVERT);
+        });
     });
 }); // tslint:disable-line:max-file-line-count
