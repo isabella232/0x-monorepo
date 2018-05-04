@@ -39,38 +39,31 @@ contract MixinMatchOrders is
     function validateMatchOrdersContextOrRevert(Order memory left, Order memory right)
         private
     {
+        // The Left Order's maker asset must be the same as the Right Order's taker asset.
         require(areBytesEqual(left.makerAssetData, right.takerAssetData));
+
+        // The Left Order's taker asset must be the same as the Right Order's maker asset.
         require(areBytesEqual(left.takerAssetData, right.makerAssetData));
 
-        // Make sure there is a positive spread
-        // TODO: Explain
-        // TODO: SafeMath
-        require(
-            left.makerAssetAmount * right.makerAssetAmount >=
-            left.takerAssetAmount * right.takerAssetAmount);
+        // Make sure there is a positive spread.
+        // There is a positive spread iff the rate of change of the cost curve (MakerAmount/TakerAmount) for each order is greater
+        // than the inverse cost curve of the matched order (TakerAmount/MakerAmount). This is satisfied by the equations below:
+        // left.makerAssetAmount / left.takerAssetAmount >= right.takerAssetAmount / right.makerAssetAmount
+        // Similarly,
+        // right.makerAssetAmount / right.takerAssetAmount >= left.takerAssetAmount / left.makerAssetAmount
+        // These equations can be combined to get the following:
+        require(safeMul(left.makerAssetAmount, right.makerAssetAmount) >= safeMul(left.takerAssetAmount, right.takerAssetAmount));
     }
 
     function getMatchedFillAmounts(Order memory left, Order memory right, uint8 leftStatus, uint8 rightStatus, uint256 leftFilledAmount, uint256 rightFilledAmount)
         private
         returns (uint8 status, MatchedOrderFillAmounts memory matchedFillOrderAmounts)
     {
-        // The goal is for taker to obtain the maximum number of left maker
-        // token.
-
+        // The goal is for taker to obtain the maximum number of left maker asset.
         // The constraint can be either on the left or on the right. We need to
         // determine where it is.
-
-        uint256 ratio = 0;
-
-
         uint256 rightTakerAssetAmountRemaining = safeSub(right.takerAssetAmount, rightFilledAmount);
-        ratio = safeDiv(rightTakerAssetAmountRemaining, right.takerAssetAmount);
-        uint256 rightMakerAssetAmountRemaining = safeMul(right.makerAssetAmount, ratio);
-
         uint256 leftTakerAssetAmountRemaining = safeSub(left.takerAssetAmount, leftFilledAmount);
-        ratio = safeDiv(leftTakerAssetAmountRemaining, left.takerAssetAmount);
-        uint256 leftMakerAssetAmountRemaining = safeMul(left.makerAssetAmount, ratio);
-
         if(safeMul(leftTakerAssetAmountRemaining, right.takerAssetAmount) <= safeMul(rightTakerAssetAmountRemaining, right.makerAssetAmount))
         {
             // leftTakerAssetAmountRemaining is the constraint: maximally fill left
@@ -209,8 +202,7 @@ contract MixinMatchOrders is
         // Settle matched orders. Succeeds or throws.
         settleMatchedOrders(left, right, matchedFillOrderAmounts, takerAddress);
 
-        // TODO: THIS
-        // Update exchange internal state
+        // Update exchange state
         updateFilledState(
             left,
             right.makerAddress,
