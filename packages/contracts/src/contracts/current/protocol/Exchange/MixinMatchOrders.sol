@@ -50,7 +50,6 @@ contract MixinMatchOrders is
             left.takerAssetAmount * right.takerAssetAmount);
     }
 
-
     function getMatchedFillAmounts(Order memory left, Order memory right, uint8 leftStatus, uint8 rightStatus, uint256 leftFilledAmount, uint256 rightFilledAmount)
         private
         returns (uint8 status, MatchedOrderFillAmounts memory matchedFillOrderAmounts)
@@ -72,10 +71,6 @@ contract MixinMatchOrders is
         ratio = safeDiv(leftTakerAssetAmountRemaining, left.takerAssetAmount);
         uint256 leftMakerAssetAmountRemaining = safeMul(left.makerAssetAmount, ratio);
 
-
-        // TODO: SafeMath
-        //         if(safeMul(right.makerAssetAmount, rightTakerAssetAmountRemaining) < safeMul(right.takerAssetAmount, leftTakerAssetAmountRemaining))
-
         if(safeMul(leftTakerAssetAmountRemaining, right.takerAssetAmount) <= safeMul(rightTakerAssetAmountRemaining, right.makerAssetAmount))
         {
             // leftTakerAssetAmountRemaining is the constraint: maximally fill left
@@ -93,7 +88,10 @@ contract MixinMatchOrders is
 
             // Compute how much we should fill right to satisfy
             // lefttakerAssetFilledAmount
-            // TODO: Check if rounding is in the correct direction.
+            if(isRoundingError(right.takerAssetAmount, right.makerAssetAmount, matchedFillOrderAmounts.left.takerAssetFilledAmount)) {
+                status = uint8(Status.ROUNDING_ERROR_TOO_LARGE);
+                return;
+            }
             uint256 rightFill = getPartialAmount(
                 right.takerAssetAmount,
                 right.makerAssetAmount,
@@ -112,13 +110,14 @@ contract MixinMatchOrders is
                 return;
             }
 
-            // Unfortunately, this is no longer exact and taker may end up
-            // with some left.takerAssets. This will be a rounding error amount.
-            // We should probably not bother and just give them to the makers.
+            // The Right Order must spend at least as much as we're transferring to the Left Order's maker.
             assert(matchedFillOrderAmounts.right.makerAssetFilledAmount >= matchedFillOrderAmounts.left.takerAssetFilledAmount);
-
-            // TODO: Make sure the difference is neglible
-
+            // If the amount transferred from the Right Order is greater than what is transferred, it is a rounding error amount.
+            // Ensure this difference is negligible by dividing the values with each other. The result should equal to ~1.
+            if(isRoundingError(matchedFillOrderAmounts.right.makerAssetFilledAmount, matchedFillOrderAmounts.left.takerAssetFilledAmount, 1)) {
+                status = uint8(Status.ROUNDING_ERROR_TOO_LARGE);
+                return;
+            }
         } else {
             // rightTakerAssetAmountRemaining is the constraint: maximally fill right
             (   status,
@@ -133,8 +132,9 @@ contract MixinMatchOrders is
                 return;
             }
 
-            // We now have rightmakerAssets to fill left with
-            assert(matchedFillOrderAmounts.right.makerAssetFilledAmount <= /* remainingLeft ? */ leftTakerAssetAmountRemaining);
+            // Now that we've completely filled the Right Order's, we must partially fill the Left Order.
+            // The amount transferred by the Right Order must not exceed the amount required to fill the Left Order.
+            assert(matchedFillOrderAmounts.right.makerAssetFilledAmount <= leftTakerAssetAmountRemaining);
 
             // Fill left with all the right.makerAsset we received
             (   status,
@@ -149,7 +149,7 @@ contract MixinMatchOrders is
                 return;
             }
 
-            // Taker should not have lefttakerAssets left
+            // The amount sent from the Right Order must equal the amount received by the Left Order.
             assert(matchedFillOrderAmounts.right.makerAssetFilledAmount == matchedFillOrderAmounts.left.takerAssetFilledAmount);
         }
     }
@@ -206,7 +206,7 @@ contract MixinMatchOrders is
             return;
         }
 
-        // Settle matched orders
+        // Settle matched orders. Succeeds or throws.
         settleMatchedOrders(left, right, matchedFillOrderAmounts, takerAddress);
 
         // TODO: THIS

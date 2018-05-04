@@ -34,7 +34,7 @@ chaiSetup.configure();
 const expect = chai.expect;
 const blockchainLifecycle = new BlockchainLifecycle(web3Wrapper);
 
-describe.only('matchOrdersAndVerifyBalancesAsync', () => {
+describe('matchOrdersAndVerifyBalancesAsync', () => {
     let makerAddressLeft: string;
     let makerAddressRight: string;
     let owner: string;
@@ -640,7 +640,7 @@ describe.only('matchOrdersAndVerifyBalancesAsync', () => {
             ).to.be.rejectedWith(constants.REVERT);
         });
 
-        it('should throw if the right maker asset is not equal to the left taker asset ', async () => {
+        it('should throw if the right maker asset is not equal to the left taker asset', async () => {
             const signedOrderLeft = orderFactoryLeft.newSignedOrder({
                 makerAddress: makerAddressLeft,
                 makerAssetData: assetProxyUtils.encodeERC20ProxyData(defaultMakerAssetAddress),

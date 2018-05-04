@@ -71,4 +71,9 @@ contract MExchangeCore is LibOrder {
         bytes32 orderHash,
         FillResults memory fillResults)
         internal;
+
+
+        function isRoundingError(uint256 numerator, uint256 denominator, uint256 target)
+            public pure
+            returns (bool isError);
 }
