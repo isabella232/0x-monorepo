@@ -46,11 +46,12 @@ contract MixinMatchOrders is
         require(areBytesEqual(left.takerAssetData, right.makerAssetData));
 
         // Make sure there is a positive spread.
-        // There is a positive spread iff the rate of change of the cost curve (MakerAmount/TakerAmount) for each order is greater
-        // than the inverse cost curve of the matched order (TakerAmount/MakerAmount). This is satisfied by the equations below:
-        // left.makerAssetAmount / left.takerAssetAmount >= right.takerAssetAmount / right.makerAssetAmount
-        // Similarly,
-        // right.makerAssetAmount / right.takerAssetAmount >= left.takerAssetAmount / left.makerAssetAmount
+        // There is a positive spread iff the cost per unit bought (MakerAmount/TakerAmount) for each order is greater
+        // than the profit per unit sold of the matched order (TakerAmount/MakerAmount).
+        // This is satisfied by the equations below:
+        // <left.makerAssetAmount> / <left.takerAssetAmount> >= <right.takerAssetAmount> / <right.makerAssetAmount>
+        // AND
+        // <right.makerAssetAmount> / <right.takerAssetAmount> >= <left.takerAssetAmount> / <left.makerAssetAmount>
         // These equations can be combined to get the following:
         require(safeMul(left.makerAssetAmount, right.makerAssetAmount) >= safeMul(left.takerAssetAmount, right.takerAssetAmount));
     }
@@ -60,13 +61,18 @@ contract MixinMatchOrders is
         returns (uint8 status, MatchedOrderFillAmounts memory matchedFillOrderAmounts)
     {
         // The goal is for taker to obtain the maximum number of left maker asset.
-        // The constraint can be either on the left or on the right. We need to
-        // determine where it is.
+        // We settle orders at the price point defined by the right order (profit goes to the order taker)
+        // The constraint can be either on the left or on the right.
+        // The constraint is on the left iff the amount required to fill the left order
+        // is less than or equal to the amount we can spend from the right order:
+        //    <leftTakerAssetAmountRemaining> <= <rightTakerAssetAmountRemaining> * <rightMakerToTakerRatio>
+        //    <leftTakerAssetAmountRemaining> <= <rightTakerAssetAmountRemaining> * <right.makerAssetAmount> / <right.takerAssetAmount>
+        //    <leftTakerAssetAmountRemaining> * <right.takerAssetAmount> <= <rightTakerAssetAmountRemaining> * <right.makerAssetAmount>
         uint256 rightTakerAssetAmountRemaining = safeSub(right.takerAssetAmount, rightFilledAmount);
         uint256 leftTakerAssetAmountRemaining = safeSub(left.takerAssetAmount, leftFilledAmount);
         if(safeMul(leftTakerAssetAmountRemaining, right.takerAssetAmount) <= safeMul(rightTakerAssetAmountRemaining, right.makerAssetAmount))
         {
-            // leftTakerAssetAmountRemaining is the constraint: maximally fill left
+            // Left order is the constraint: maximally fill left
             (   status,
                 matchedFillOrderAmounts.left
             ) = getFillAmounts(
@@ -79,8 +85,10 @@ contract MixinMatchOrders is
                 return;
             }
 
-            // Compute how much we should fill right to satisfy
-            // lefttakerAssetFilledAmount
+            // The right order just spent <leftTakerAssetAmountRemaining> of their maker asset to fill the left order.
+            // The amount right gets in return is:
+            //    <leftOrderAmountBought> * <rightProfitPerUnitSold>
+            // =  <matchedFillOrderAmounts.left.takerAssetFilledAmount> * <right.takerAssetAmount> / <right.makerAssetAmount>
             if(isRoundingError(right.takerAssetAmount, right.makerAssetAmount, matchedFillOrderAmounts.left.takerAssetFilledAmount)) {
                 status = uint8(Status.ROUNDING_ERROR_TOO_LARGE);
                 return;
@@ -90,7 +98,7 @@ contract MixinMatchOrders is
                 right.makerAssetAmount,
                 matchedFillOrderAmounts.left.takerAssetFilledAmount);
 
-            // Compute right fill amounts
+            // Compute fill amounts
             (   status,
                 matchedFillOrderAmounts.right
             ) = getFillAmounts(
@@ -103,16 +111,16 @@ contract MixinMatchOrders is
                 return;
             }
 
-            // The Right Order must spend at least as much as we're transferring to the Left Order's maker.
-            assert(matchedFillOrderAmounts.right.makerAssetFilledAmount >= matchedFillOrderAmounts.left.takerAssetFilledAmount);
-            // If the amount transferred from the Right Order is greater than what is transferred, it is a rounding error amount.
+            // The right order must spend at least as much as we're transferring to the left order's maker.
+            // If the amount transferred from the right order is greater than what is transferred, it is a rounding error amount.
             // Ensure this difference is negligible by dividing the values with each other. The result should equal to ~1.
+            assert(matchedFillOrderAmounts.right.makerAssetFilledAmount >= matchedFillOrderAmounts.left.takerAssetFilledAmount);
             if(isRoundingError(matchedFillOrderAmounts.right.makerAssetFilledAmount, matchedFillOrderAmounts.left.takerAssetFilledAmount, 1)) {
                 status = uint8(Status.ROUNDING_ERROR_TOO_LARGE);
                 return;
             }
         } else {
-            // rightTakerAssetAmountRemaining is the constraint: maximally fill right
+            // Right order is the constraint: maximally fill right
             (   status,
                 matchedFillOrderAmounts.right
             ) = getFillAmounts(
@@ -125,11 +133,14 @@ contract MixinMatchOrders is
                 return;
             }
 
-            // Now that we've completely filled the Right Order's, we must partially fill the Left Order.
-            // The amount transferred by the Right Order must not exceed the amount required to fill the Left Order.
+            // The left order just spent <rightTakerAssetAmountRemaining> of their maker asset to fill the right order.
+            // The amount left gets in return is:
+            //    <rightOrderAmountBought> * <rightCostPerUnitSold>
+            //   (let Y = <matchedFillOrderAmounts.right.takerAssetFilledAmount>; let X = matchedFillOrderAmounts.right.makerAssetFilledAmount)
+            // = Y * X / Y
+            // = X = <matchedFillOrderAmounts.right.makerAssetFilledAmount>
+            // * We assert that amount transferred by the right order must not exceed the amount required to fill the left order.
             assert(matchedFillOrderAmounts.right.makerAssetFilledAmount <= leftTakerAssetAmountRemaining);
-
-            // Fill left with all the right.makerAsset we received
             (   status,
                 matchedFillOrderAmounts.left
             ) = getFillAmounts(
@@ -142,7 +153,7 @@ contract MixinMatchOrders is
                 return;
             }
 
-            // The amount sent from the Right Order must equal the amount received by the Left Order.
+            // The amount sent from the right order must equal the amount received by the left order.
             assert(matchedFillOrderAmounts.right.makerAssetFilledAmount == matchedFillOrderAmounts.left.takerAssetFilledAmount);
         }
     }
@@ -194,7 +205,15 @@ contract MixinMatchOrders is
         // Compute proportional fill amounts
         MatchedOrderFillAmounts memory matchedFillOrderAmounts;
         uint8 matchedFillAmountsStatus;
-        (matchedFillAmountsStatus, matchedFillOrderAmounts) = getMatchedFillAmounts(left, right, leftStatus, rightStatus, leftFilledAmount, rightFilledAmount);
+        (   matchedFillAmountsStatus,
+            matchedFillOrderAmounts
+        ) = getMatchedFillAmounts(
+            left,
+            right,
+            leftStatus,
+            rightStatus,
+            leftFilledAmount,
+            rightFilledAmount);
         if(matchedFillAmountsStatus != uint8(Status.SUCCESS)) {
             return;
         }
